@@ -1,5 +1,8 @@
+import os
+import threading
 import telebot
 import requests
+from http.server import HTTPServer, BaseHTTPRequestHandler
 
 BOT_TOKEN = "8813841284:AAHF8f-i-GyOGskOqFl8su0-vO8OWRAhraQ"
 API_KEY = "AQ.Ab8RN6Kj1ip3BnEvW8M3y5LacCVv55OxjmqHN07E6OKjn9AKiA"
@@ -52,6 +55,21 @@ def handle_message(message):
         bot.reply_to(message, "দুঃখিত, সার্ভারে কিছুটা সমস্যা হচ্ছে। কিছুক্ষণ পর আবার চেষ্টা করুন।")
         print(f"Error: {e}")
 
-print("=== Telegram Bot চালু হয়েছে... ===")
-bot.infinity_polling()
+# Render-এর জন্য মিনিমাম ডামি সার্ভার
+class SimpleHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"Bot is alive!")
 
+def run_http_server():
+    port = int(os.environ.get("PORT", 10000))
+    server = HTTPServer(("0.0.0.0", port), SimpleHandler)
+    server.serve_forever()
+
+if __name__ == "__main__":
+    # ফেক পোর্ট ব্যাকগ্রাউন্ডে চালু করা
+    threading.Thread(target=run_http_server, daemon=True).start()
+    print("=== Telegram Bot চালু হয়েছে... ===")
+    bot.infinity_polling()
+    
