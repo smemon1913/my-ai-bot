@@ -47,15 +47,22 @@ def handle_message(message):
     }
 
     try:
-        res = requests.post(URL, json=payload).json()
-        reply = res["candidates"][0]["content"]["parts"][0]["text"]
-        user_memory[chat_id].append({"role": "model", "parts": [{"text": reply}]})
-        bot.reply_to(message, reply)
-    except Exception as e:
-        bot.reply_to(message, "দুঃখিত, সার্ভারে কিছুটা সমস্যা হচ্ছে। কিছুক্ষণ পর আবার চেষ্টা করুন।")
-        print(f"Error: {e}")
+        response = requests.post(URL, json=payload)
+        res = response.json()
+        print(f"Gemini Response: {res}")
 
-# Render-এর জন্য মিনিমাম ডামি সার্ভার
+        if "candidates" in res and res["candidates"]:
+            reply = res["candidates"][0]["content"]["parts"][0]["text"]
+            user_memory[chat_id].append({"role": "model", "parts": [{"text": reply}]})
+            bot.reply_to(message, reply)
+        elif "error" in res:
+            bot.reply_to(message, f"API Error: {res['error'].get('message', 'Unknown error')}")
+        else:
+            bot.reply_to(message, "দুঃখিত, কোনো উত্তর পাওয়া যায়নি।")
+    except Exception as e:
+        print(f"Exception: {e}")
+        bot.reply_to(message, f"Error: {str(e)}")
+
 class SimpleHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
@@ -68,7 +75,6 @@ def run_http_server():
     server.serve_forever()
 
 if __name__ == "__main__":
-    # ফেক পোর্ট ব্যাকগ্রাউন্ডে চালু করা
     threading.Thread(target=run_http_server, daemon=True).start()
     print("=== Telegram Bot চালু হয়েছে... ===")
     bot.infinity_polling()
