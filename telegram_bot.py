@@ -6,7 +6,7 @@ import requests
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
 BOT_TOKEN = "8813841284:AAHF8f-i-GyOGskOqFl8su0-vO8OWRAhraQ"
-API_KEY = "AQ.Ab8RN6JBwkKG_7Vq412cXaShXvigI7ulVf5GpymPrub0WSNUQg"
+API_KEY = "AQ.Ab8RN6KoHo4H9t0K3u9swYAB3ZTk1Aysh814wjL3gbF3dSoyJQ"
 URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent"
 
 CATALOG = [
@@ -81,25 +81,27 @@ SYSTEM_INSTRUCTION = f"""
 ব্যবসার পলিসি:
 - ডেলিভারি চার্জ: ঢাকা সিটিতে ৬০ টাকা, ঢাকার বাইরে ১২০ টাকা।
 - ডেলিভারি সময়: ঢাকায় ২৪-৪৮ ঘণ্টা, ঢাকার বাইরে ২-৩ দিন।
-- রিটার্ন/এক্সচেঞ্জ: ডেলিভারিম্যানের সামনে চেক করা যাবে। সাইজ সমস্যা হলে ৪৮ ঘণ্টার মধ্যে এক্সচেঞ্জ সুবিধা রয়েছে।
+- রিটার্ন/এক্সচেঞ্জ: ডেলিভারিম্যানের সামনে চেক করা যাবে। সাইজ সমস্যা হলে ৪৮ ঘণ্টার মধ্যে ফ্রি এক্সচেঞ্জ সুবিধা রয়েছে।
 - পেমেন্ট: ক্যাশ অন ডেলিভারি (COD) এবং বিকাশ।
 
 কাস্টমার হ্যান্ডলিং নিয়মাবলী:
-১. কাস্টমার সাধারণ হাই/হ্যালো বললে তাকে আন্তরিকভাবে শুভেচ্ছা জানাও এবং কীভাবে সহায়তা করতে পারো তা জানতে চাও। সাথে সাথে অর্ডার ডিটেইলস চাইবে না।
-২. বাজেট বা পছন্দের রঙের কথা বললে (যেমন: "১৫০০ টাকার মধ্যে শার্ট দেখাও" বা "ব্ল্যাক কালারের টি শার্টের পিক দাও") ক্যাটালগ খুঁজে নির্দিষ্ট পণ্যের নাম, সাইজ ও দাম জানাবে।
-৩. কাস্টমার ছবি দেখতে চাইলে টেক্সট উত্তরের ভেতর অবশ্যই ইমেজ ট্যাগটি যোগ করবে: `[SEND_IMAGE: প্রোডাক্টের_ID]`।
-৪. ক্যাটালগে নেই এমন কিছু (যেমন জুতো) চাইলে বিনয়ের সাথে জানাবে যে জুতো কালেকশন শীঘ্রই আসবে।
-৫. শুধুমাত্র কাস্টমার যখন স্পষ্ট বলবে "অর্ডার করব" বা "নিতে চাই", তখনই তার নাম, মোবাইল নম্বর, ডেলিভারি ঠিকানা ও সাইজ জানতে চাইবে।
-৬. ভাষা মার্জিত ও সংক্ষেপ রাখবে।
+১. কাস্টমার সাধারণ সম্ভাষণ জানালে আন্তরিক শুভেচ্ছা জানিয়ে কীভাবে সাহায্য করতে পারো তা জানতে চাও। সাথে সাথে অর্ডার তথ্য চাইবে না।
+২. বাজেট বা নির্দিষ্ট কালার উল্লেখ করে প্রোডাক্ট চাইলে (যেমন: "১৫০০ টাকার মধ্যে শার্ট দেখাও" বা "ব্ল্যাক কালারের শার্টের পিক দাও") ক্যাটালগ খুঁজে নাম, বিবরণ ও দাম জানাবে।
+৩. ছবি পাঠানোর জন্য টেক্সটে অবশ্যই ট্যাগ রাখবে: `[SEND_IMAGE: প্রোডাক্টের_ID]`।
+৪. ক্যাটালগে নেই এমন কিছু (যেমন জুতো) চাইলে বিনয়ের সাথে বলবে যে জুতো কালেকশন শীঘ্রই আসবে।
+৫. শুধুমাত্র কাস্টমার স্পষ্ট বললে "অর্ডার করতে চাই", তখন নাম, ফোন নম্বর, ঠিকানা ও সাইজ জানতে চাইবে।
+৬. ভাষা মার্জিত, প্রফেশনাল ও সংক্ষিপ্ত রাখবে।
 """
 
 bot = telebot.TeleBot(BOT_TOKEN)
 user_memory = {}
 
 def call_gemini(chat_id, user_text):
+    # সার্ভিস একাউন্ট কী-এর জন্য Bearer ও API Key উভয় হেডার দেওয়া হলো
     headers = {
         "Content-Type": "application/json",
-        "X-goog-api-key": API_KEY
+        "X-goog-api-key": API_KEY,
+        "Authorization": f"Bearer {API_KEY}"
     }
     payload = {
         "system_instruction": {"parts": [{"text": SYSTEM_INSTRUCTION}]},
@@ -109,12 +111,11 @@ def call_gemini(chat_id, user_text):
     try:
         response = requests.post(URL, headers=headers, json=payload, timeout=25)
         res = response.json()
-        print(f"API Response: {res}")
 
         if "candidates" in res and res["candidates"]:
             return res["candidates"][0]["content"]["parts"][0]["text"]
         elif "error" in res:
-            return f"API Error: {res['error'].get('message', 'Server error')}"
+            return f"API Error: {res['error'].get('message', 'Unknown error')}"
         return "দুঃখিত, কোনো উত্তর পাওয়া যায়নি।"
     except Exception as e:
         return f"Error: {str(e)}"
@@ -142,7 +143,6 @@ def handle_message(message):
     reply = call_gemini(chat_id, user_text)
     user_memory[chat_id].append({"role": "model", "parts": [{"text": reply}]})
 
-    # ছবি পাঠানো যাচাই
     if "[SEND_IMAGE:" in reply:
         clean_reply = reply
         for item in CATALOG:
@@ -164,7 +164,7 @@ class SimpleHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
         self.end_headers()
-        self.wfile.write(b"VELMONT ELITE Agent is Live.")
+        self.wfile.write(b"VELMONT ELITE Assistant is Online.")
 
 def run_http_server():
     port = int(os.environ.get("PORT", 10000))
