@@ -2,14 +2,15 @@ import os
 import json
 import threading
 import telebot
-import requests
+from google import genai
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
 BOT_TOKEN = "8813841284:AAHF8f-i-GyOGskOqFl8su0-vO8OWRAhraQ"
-API_KEY = "AQ.Ab8RN6Jf1FDFa6dIB6Fh-Tuz_bodrfO8-8j3n6mbr3Zehh4qog"
-URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={API_KEY}"
+API_KEY = "AQ.Ab8RN6Kp0jgiJu5oIKsoaCEQjDed3l1tzSl82k8Jq65UHrhDkg"
 
-# আপনার আসল প্রোডাক্ট ক্যাটালগ ও ছবির লিঙ্ক (এখানে আপনার প্রোডাক্টের ইমেজ লিঙ্ক বসাতে পারবেন)
+# অফিসিয়াল SDK ক্লায়েন্ট (যা নতুন ফরম্যাটের সব কী সঠিকভাবে হ্যান্ডেল করে)
+client = genai.Client(api_key=API_KEY)
+
 CATALOG = [
     {
         "id": "TSHIRT_BLK",
@@ -76,7 +77,7 @@ CATALOG = [
 SYSTEM_INSTRUCTION = f"""
 তুমি প্রিমিয়াম ক্লদিং ব্র্যান্ড "VELMONT ÉLITE"-এর অফিসিয়াল এআই কাস্টমার সাপোর্ট ও সেলস কনসালট্যান্ট।
 
-আমাদের বর্তমান প্রোডাক্ট ক্যাটালগ (সম্পূর্ণ রিয়েল ডাটা):
+আমাদের বর্তমান প্রোডাক্ট ক্যাটালগ:
 {json.dumps(CATALOG, ensure_ascii=False, indent=2)}
 
 ব্যবসার পলিসি:
@@ -86,47 +87,34 @@ SYSTEM_INSTRUCTION = f"""
 - পেমেন্ট: ক্যাশ অন ডেলিভারি (COD) এবং বিকাশ।
 
 কাস্টমার হ্যান্ডলিং ও রেসপন্স রুলস:
-১. কাস্টমার যদি কোনো বাজেট উল্লেখ করে (যেমন: "১৫০০ টাকার মধ্যে শার্ট দেখাও" বা "২০০০ টাকার মধ্যে ডেনিম দেখাও"), ক্যাটালগ খুঁজে বাজেট অনুযায়ী নির্দিষ্ট প্রোডাক্টের নাম, সাইজ ও দাম জানাবে।
-২. কাস্টমার যদি ছবি/পিকচার দেখতে চায় (যেমন: "ব্ল্যাক কালারের টি শার্টের পিক দাও", "হোয়াইট শার্টের ছবি দেখাও"):
-   - তুমি টেক্সট উত্তরের সাথে অবশ্যই ঐ প্রোডাক্টের ইমেজ পাঠানোর জন্য বিশেষ ট্যাগ ব্যবহার করবে:
-     `[SEND_IMAGE: প্রোডাক্টের_ID]`
-     উদাহরণ: কাস্টমার কালো টিশার্ট চাইলে বলবে "এই যে আমাদের Velmont Elite Heavyweight Minimalist Black T-Shirt-এর ছবি ও বিবরণ: ... [SEND_IMAGE: TSHIRT_BLK]"
-৩. আমাদের কাছে জুতো (shoes) বা যা ক্যাটালগে নেই তা চাইলে বলবে: "আমরা বর্তমানে প্রিমিয়াম ডেনিম, শার্ট ও টি-শার্ট কালেকশনে বিশেষজ্ঞ। জুতো কালেকশন শীঘ্রই আসবে।"
-৪. শুধুমাত্র কাস্টমার যখন স্পষ্ট বলবে "অর্ডার করব" বা "নিতে চাই", তখনই বিনয়ের সাথে বলবে:
-   "অর্ডারটি কনফার্ম করতে অনুগ্রহ করে আপনার:
-   - পুরো নাম
-   - ফোন নম্বর
-   - ডেলিভারি ঠিকানা
-   - প্রোডাক্টের নাম ও সাইজ লিখে দিন।"
-৫. ভাষা সবসময় মার্জিত, প্রফেশনাল এবং মিষ্টি বাংলা হবে। অপ্রয়োজনীয় জটিল কথা বলবে না।
+১. কাস্টমার সাধারণ হাই/হ্যালো বললে মার্জিতভাবে সম্ভাষণ জানাও এবং কীভাবে সহযোগিতা করতে পারো তা জানতে চাও। সাথে সাথে অর্ডার ডিটেইলস চাইবে না।
+২. কাস্টমার বাজেট বা কালার উল্লেখ করে প্রোডাক্ট দেখতে চাইলে (যেমন: "১৫০০ টাকার মধ্যে শার্ট দেখাও" বা "ব্ল্যাক কালারের টি শার্টের পিক দাও"):
+   - ক্যাটালগ খুঁজে পণ্যের নাম, বিবরণ ও দাম জানাবে।
+   - ছবি পাঠাতে উত্তরের মধ্যে অবশ্যই ট্যাগ দেবে: `[SEND_IMAGE: প্রোডাক্টের_ID]`
+৩. ক্যাটালগে নেই এমন কিছু (যেমন জুতো) চাইলে বিনয়ের সাথে জানাবে যে এটি খুব শীঘ্রই কালেকশনে যুক্ত হবে।
+৪. কাস্টমার নিশ্চিতভাবে "অর্ডার করতে চাই" বললে নাম, মোবাইল নম্বর, ঠিকানা ও সাইজ জানতে চাইবে।
+৫. ভাষা হবে প্রফেশনাল ও ইতিবাচক বাংলা।
 """
 
 bot = telebot.TeleBot(BOT_TOKEN)
-user_memory = {}
 
-def call_gemini(chat_id, user_text):
-    headers = {
-        "Content-Type": "application/json",
-        "X-goog-api-key": API_KEY
-    }
-    payload = {
-        "system_instruction": {"parts": [{"text": SYSTEM_INSTRUCTION}]},
-        "contents": user_memory[chat_id]
-    }
-    try:
-        response = requests.post(URL, headers=headers, json=payload, timeout=25)
-        res = response.json()
-        if "candidates" in res and res["candidates"]:
-            return res["candidates"][0]["content"]["parts"][0]["text"]
-        elif "error" in res:
-            return f"API Error: {res['error'].get('message', 'Server busy')}"
-        return "দুঃখিত, কোনো উত্তর পাওয়া যায়নি।"
-    except Exception as e:
-        return f"নেটওয়ার্কে সামান্য সমস্যা হয়েছে। আবার মেসেজ দিন।"
+# প্রতিটি ইউজারের জন্য চ্যাট সেশন ট্র্যাক করা
+user_chats = {}
+
+def get_or_create_chat(chat_id):
+    if chat_id not in user_chats:
+        user_chats[chat_id] = client.chats.create(
+            model="gemini-2.5-flash",
+            config={"system_instruction": SYSTEM_INSTRUCTION}
+        )
+    return user_chats[chat_id]
 
 @bot.message_handler(commands=["start"])
 def send_welcome(message):
-    user_memory[message.chat.id] = []
+    user_chats[message.chat.id] = client.chats.create(
+        model="gemini-2.5-flash",
+        config={"system_instruction": SYSTEM_INSTRUCTION}
+    )
     welcome_text = (
         "VELMONT ÉLITE-এ আপনাকে স্বাগতম! ✨\n\n"
         "আমাদের প্রিমিয়াম শার্ট, ডেনিম প্যান্ট ও টি-শার্টের কালেকশন দেখতে পারেন।\n"
@@ -139,39 +127,38 @@ def handle_message(message):
     chat_id = message.chat.id
     user_text = message.text
 
-    if chat_id not in user_memory:
-        user_memory[chat_id] = []
+    try:
+        chat = get_or_create_chat(chat_id)
+        response = chat.send_message(user_text)
+        reply = response.text
 
-    user_memory[chat_id].append({"role": "user", "parts": [{"text": user_text}]})
+        # ইমেজ কমান্ড হ্যান্ডলিং
+        if "[SEND_IMAGE:" in reply:
+            clean_reply = reply
+            for item in CATALOG:
+                tag = f"[SEND_IMAGE: {item['id']}]"
+                if tag in reply:
+                    clean_reply = clean_reply.replace(tag, "").strip()
+                    try:
+                        caption = f"💎 {item['name']}\n💰 মূল্য: {item['price']} ৳\n📏 সাইজ: {', '.join(item['sizes'])}"
+                        bot.send_photo(chat_id, item["image_url"], caption=caption)
+                    except Exception as img_err:
+                        print(f"Image error: {img_err}")
 
-    reply = call_gemini(chat_id, user_text)
-    user_memory[chat_id].append({"role": "model", "parts": [{"text": reply}]})
+            if clean_reply:
+                bot.send_message(chat_id, clean_reply)
+        else:
+            bot.reply_to(message, reply)
 
-    # ছবি পাঠানোর কমান্ড ডিটেক্ট করা
-    if "[SEND_IMAGE:" in reply:
-        clean_reply = reply
-        # ট্যাগগুলো খুঁজে ছবি পাঠানো
-        for item in CATALOG:
-            tag = f"[SEND_IMAGE: {item['id']}]"
-            if tag in reply:
-                clean_reply = clean_reply.replace(tag, "").strip()
-                try:
-                    caption = f"💎 {item['name']}\n💰 মূল্য: {item['price']} ৳\n📏 সাইজ: {', '.join(item['sizes'])}"
-                    bot.send_photo(chat_id, item["image_url"], caption=caption)
-                except Exception as img_err:
-                    print(f"Image send error: {img_err}")
+    except Exception as e:
+        print(f"Chat error: {e}")
+        bot.reply_to(message, f"এরর হয়েছে: {str(e)}")
 
-        if clean_reply:
-            bot.send_message(chat_id, clean_reply)
-    else:
-        bot.reply_to(message, reply)
-
-# Render ফ্রি ওয়েব সার্ভিস সচল রাখার সার্ভার
 class SimpleHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
         self.end_headers()
-        self.wfile.write(b"VELMONT ELITE Agent is Live.")
+        self.wfile.write(b"VELMONT ELITE Assistant is Online.")
 
 def run_http_server():
     port = int(os.environ.get("PORT", 10000))
@@ -180,6 +167,6 @@ def run_http_server():
 
 if __name__ == "__main__":
     threading.Thread(target=run_http_server, daemon=True).start()
-    print("=== Bot Started with Dynamic Catalog & Images ===")
+    print("=== Bot Started with Official SDK ===")
     bot.infinity_polling()
- 
+    
