@@ -5,8 +5,8 @@ import requests
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
 BOT_TOKEN = "8813841284:AAHF8f-i-GyOGskOqFl8su0-vO8OWRAhraQ"
-API_KEY = "AQ.Ab8RN6Kj1ip3BnEvW8M3y5LacCVv55OxjmqHN07E6OKjn9AKiA"
-URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key={API_KEY}"
+API_KEY = "AQ.Ab8RN6Jf1FDFa6dIB6Fh-Tuz_bodrfO8-8j3n6mbr3Zehh4qog"
+URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent"
 
 SYSTEM_INSTRUCTION = """
 তুমি একটি প্রিমিয়াম পোশাক ব্র্যান্ডের অফিসিয়াল এআই কাস্টমার সাপোর্ট সহকারী।
@@ -41,15 +41,19 @@ def handle_message(message):
 
     user_memory[chat_id].append({"role": "user", "parts": [{"text": user_text}]})
 
+    headers = {
+        "Content-Type": "application/json",
+        "x-goog-api-key": API_KEY
+    }
+
     payload = {
         "system_instruction": {"parts": [{"text": SYSTEM_INSTRUCTION}]},
         "contents": user_memory[chat_id]
     }
 
     try:
-        response = requests.post(URL, json=payload)
+        response = requests.post(URL, headers=headers, json=payload)
         res = response.json()
-        print(f"Gemini Response: {res}")
 
         if "candidates" in res and res["candidates"]:
             reply = res["candidates"][0]["content"]["parts"][0]["text"]
@@ -60,7 +64,6 @@ def handle_message(message):
         else:
             bot.reply_to(message, "দুঃখিত, কোনো উত্তর পাওয়া যায়নি।")
     except Exception as e:
-        print(f"Exception: {e}")
         bot.reply_to(message, f"Error: {str(e)}")
 
 class SimpleHandler(BaseHTTPRequestHandler):
